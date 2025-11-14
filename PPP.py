@@ -1,32 +1,30 @@
-
-#import scapy
 from scapy.all import *
-
-import sys
 import time
-from socket import *
-import struct
 
-#Ping made via PPPoE
+def pktcb(pkt):
+    print("SNIFF:", pkt.summary())
 
-print("Hello World!")
+print("Sniffing on ppp0 for 10 packets ...")
+sniffer = AsyncSniffer(iface="ppp0", prn=pktcb)
+sniffer.start()
 
-src_mac = scapy.layers.l2.Ether().src
+# List of 10 different packets to send
+packets = [
+    IP(dst="10.0.0.2")/ICMP()/b"icmp-test",
+    IP(dst="10.0.0.2")/TCP(dport=80)/b"http-test",
+    IP(dst="10.0.0.2")/UDP(dport=53)/b"dns-query",
+    IP(dst="10.0.0.2")/TCP(dport=22)/b"ssh-test",
+    IP(dst="10.0.0.2")/UDP(dport=69)/b"tftp-test",
+    IP(dst="10.0.0.2")/TCP(dport=25)/b"smtp-test",
+    IP(dst="10.0.0.2")/UDP(dport=123)/b"ntp-test",
+    IP(dst="10.0.0.2")/TCP(dport=110)/b"pop3-test",
+    IP(dst="10.0.0.2")/UDP(dport=161)/b"snmp-test",
+    IP(dst="10.0.0.2")/TCP(dport=443)/b"https-test"
+]
 
-print(src_mac)
-def ppp_create(destination):
-    try:
-        trueip = gethostbyname(destination)
-        dst_mac = scapy.layers.l2.getmacbyip(trueip)
-        print(dst_mac)
-        if dst_mac is None:
-            print("MAC address not found for this IP")
-            return
-        pppPacket = Ether(dst=dst_mac, src=src_mac) / PPPoED(sessionid=0x1234, code="") / PPP(proto=0x0021) / IP(trueip) / ICMP()
-        print(sys.path)
-    except Exception as e:
-        print("PPP packet creation Failed: ", e)
-        return
-    
-destination = input("Enter IP to send packets: ")
-ppp_create(destination)
+for i, pkt in enumerate(packets, start=1):
+    send(pkt, iface="ppp0")
+    print(f"Sent packet #{i}: {pkt.summary()}")
+    time.sleep(1)
+
+print("Done.")
